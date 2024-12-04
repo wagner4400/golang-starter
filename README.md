@@ -7,9 +7,7 @@ One Paragraph of project description goes here
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
 
-## Project Structure Analysis
-
-### Visual Representation
+## Project Structure
 ```
 .
 ├── config/
@@ -56,7 +54,7 @@ These instructions will get you a copy of the project up and running on your loc
         - `user/`: User-related handlers
 
 4. **pkg/**
-    - Contains public packages that can be imported by other projects
+    - Contains public packages that can be imported and reused by other projects
     - Components:
         - `aws/`: AWS integration code
         - `database/`: Database related code
@@ -85,19 +83,14 @@ These instructions will get you a copy of the project up and running on your loc
     - Implements routing and middleware
     - Manages DTOs (Data Transfer Objects)
 
-3. **Infrastructure**
-    - AWS integration (`pkg/aws`)
-    - Database operations (`pkg/database`)
-    - Logging functionality (`pkg/logger`)
-    - Server configuration (`pkg/server`)
+3. **Third-party libraries out of the box**
+    - Out of the box implementation and configuration of third-party libraries like:
+      - AWS integration (`pkg/aws`)
+      - Database operations (`pkg/database`)
+      - Logging functionality (`pkg/logger`)
+      - Server configuration (`pkg/server`)
 
-4. **Middleware**
-    - Request/response processing
-    - Authentication and authorization
-    - Logging and monitoring
-    - Error handling
-
-5. **Business Logic**
+4. **Business Logic**
     - User management (`internal/entrypoint/http/user`)
     - Service layer implementations
     - Domain logic and operations
