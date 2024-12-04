@@ -1,0 +1,196 @@
+services:
+
+  # Jaeger
+  #  jaeger-all-in-one:
+  #    container_name: jaeger
+  #    image: jaegertracing/all-in-one:latest
+  #    ports:
+  #      - 16686:16686 # Jaeger UI
+  #      - 14268:14268 # Receive legacy OpenTracing traces, optional
+  ##      - 4317:4317   # OTLP gRPC receiver
+  ##      - 4318:4318   # OTLP HTTP receiver, not yet used by Quarkus, optional
+  #      - 14250:14250 # Receive from external otel-collector, optional
+  #    environment:
+  #      COLLECTOR_OTLP_ENABLED: true
+  #    networks:
+  #      - backend
+  #      - frontend
+  #      - database
+
+  #  # Zipkin
+  #  zipkin-all-in-one:
+  #    container_name: zipkin
+  #    image: openzipkin/zipkin:latest
+  #    environment:
+  #      JAVA_OPTS: -Xms1024m -Xmx1024m -XX:+ExitOnOutOfMemoryError
+  #    restart: always
+  #    ports:
+  #      - 9411:9411
+  #    networks:
+  #      - backend
+  #      - frontend
+  #      - database
+  #
+  #  # Otel
+  #  otel-collector:
+  #    container_name: otel_collector
+  #    image: otel/opentelemetry-collector:latest
+  #    restart: always
+  #    command: ["--config=/etc/otel-collector-config.yaml"]
+  #    volumes:
+  #      - ./src/main/docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+  #    ports:
+  #      - 1888:1888   # pprof extension
+  #      - 8888:8888   # Prometheus metrics exposed by the collector
+  #      - 8889:8889   # Prometheus exporter metrics
+  #      - 13133:13133 # health_check extension
+  #      - 4317:4317   # OTLP gRPC receiver
+  #      - 55679:55679 # zpages extension
+  ##    depends_on:
+  ##      - jaeger-all-in-one
+  ##      - zipkin-all-in-one
+  #    networks:
+  #      - backend
+  #      - frontend
+  #      - database
+
+  # Prometheus
+  #  prometheus:
+  #    container_name:  prometheus
+  #    image: prom/prometheus:latest
+  #    restart: always
+  #    volumes:
+  #      - ./src/main/docker/prometheus.yaml:/etc/prometheus/prometheus.yml
+  #    ports:
+  #      - 9090:9090
+  #    networks:
+  #      - backend
+  #      - frontend
+  #      - database
+  #
+  #  # Grafana
+  #  grafana:
+  #    container_name: grafana
+  #    image: grafana/grafana:latest
+  #    restart: always
+  #    ports:
+  #      - 3000:3000
+  #    environment:
+  #      GF_SECURITY_ADMIN_USER: admin
+  #      GF_SECURITY_ADMIN_PASSWORD: admin
+  #    depends_on:
+  #      - prometheus
+  #    networks:
+  #      - backend
+  #      - frontend
+  #      - database
+
+  #Front-end
+  #  lawise_front:
+  #    container_name: lawise_front
+  #    image: lawise_front:latest
+  #    restart: unless-stopped
+  #    hostname: lawise_front
+  #    ports:
+  #      - 3011:3011
+  #    networks:
+  #      - frontend
+  #      - backend
+  #    depends_on:
+  #      - lawise_api
+
+  #Back-end
+  #  lawise_api:
+  #    container_name: lawise_api
+  #    restart: no
+  #    build: .
+  #    image: lawise_api
+  #    hostname: lawise_api
+  #    environment:
+  #      suspend: true
+  #      QUARKUS_PROFILE: dev
+  #      QUARKUS_LAUNCH_DEVMODE: true
+  #      POSTGRES_URL: jdbc:postgresql://postgres_db:${DATABASE_PORT}/${POSTGRES_DB}?useSSL=false&allowMultiQueries=true&serverTimezone=UTC-3
+  #    env_file:
+  #      - ./.env
+  #    ports:
+  #      - 8080:8080
+  #      - 5005:5005
+  #    networks:
+  #      - backend
+  #      - database
+  #    depends_on:
+  #      - postgres_db
+
+  keycloak_postgres_db:
+    container_name: keycloak_postgres_db
+    image: postgres:16.2
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_POSTGRES_DB}
+      POSTGRES_USER: ${KEYCLOAK_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_POSTGRES_PASSWORD}
+    ports:
+      - ${KEYCLOAK_POSTGRES_PORT}:5432
+    networks:
+      - keycloak_network
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:25.0.4
+    command: start-dev --verbose
+    environment:
+      KC_HTTP_PORT: ${KEYCLOAK_ADMIN_PORT}
+      KC_HOSTNAME_PORT: ${KEYCLOAK_ADMIN_PORT}
+      KC_HOSTNAME_STRICT_BACKCHANNEL: false
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak_postgres_db/${KEYCLOAK_POSTGRES_DB}
+      KC_DB_USERNAME: ${KEYCLOAK_POSTGRES_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_POSTGRES_PASSWORD}
+      KC_HOSTNAME_ADMIN_URL: http://localhost:${KEYCLOAK_ADMIN_PORT}
+    ports:
+      - ${KEYCLOAK_ADMIN_PORT}:${KEYCLOAK_ADMIN_PORT}
+    restart: always
+    depends_on:
+      - keycloak_postgres_db
+    networks:
+      - keycloak_network
+
+  # Database
+  postgres_db:
+    container_name: postgres_db
+    image: "postgres:16.3"
+    restart: unless-stopped
+    hostname: postgres_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PW}
+      POSTGRES_DB: ${POSTGRES_DB} #optional (specify default database instead of $POSTGRES_DB)
+      PGDATA: /var/lib/postgresql/data/data-db
+    ports:
+      - ${POSTGRES_PORT}:5432
+    volumes:
+      - ./postgres_custom/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
+    entrypoint: docker-entrypoint.sh -c 'config_file=/var/lib/postgresql/data/postgresql.conf'
+    networks:
+      - database
+
+networks:
+  keycloak_network:
+    driver: bridge
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  database:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
